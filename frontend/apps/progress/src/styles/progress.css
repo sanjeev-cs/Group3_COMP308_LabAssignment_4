@@ -1,0 +1,655 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Verdana', 'Trebuchet MS', 'Avenir Next', sans-serif;
+  background: linear-gradient(180deg, #040a14 0%, #081224 42%, #0c1730 100%);
+  color: #eff8ff;
+  --progress-panel: rgba(8, 17, 33, 0.76);
+  --progress-panel-strong: rgba(11, 25, 48, 0.9);
+  --progress-border: rgba(170, 220, 255, 0.12);
+  --progress-border-strong: rgba(170, 220, 255, 0.2);
+  --progress-accent: #8edcff;
+  --progress-soft: #a7c4da;
+  --progress-danger: #ff8f85;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font: inherit;
+}
+
+.progress-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+}
+
+.space-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.92;
+}
+
+.space-backdrop canvas {
+  pointer-events: none;
+}
+
+.space-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, rgba(46, 132, 255, 0.18), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(255, 188, 97, 0.12), transparent 22%),
+    linear-gradient(180deg, rgba(4, 10, 20, 0.12), rgba(4, 10, 20, 0.6));
+}
+
+.progress-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1380px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 12px 0 40px;
+  display: grid;
+  gap: 20px;
+}
+
+.dashboard-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 18px;
+}
+
+.dashboard-top.is-single {
+  grid-template-columns: 1fr;
+}
+
+.dashboard-panel,
+.progress-hero-card,
+.stat-card,
+.progress-card,
+.achievement-card,
+.achievement-placeholder,
+.progress-empty-state,
+.player-card {
+  border-radius: 26px;
+  border: 1px solid var(--progress-border);
+  background: var(--progress-panel);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(22px);
+}
+
+.dashboard-panel,
+.stat-card,
+.progress-card {
+  padding: 22px;
+}
+
+.dashboard-panel {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.dashboard-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.dashboard-panel-header h2 {
+  margin: 6px 0 0;
+  font-size: clamp(1.35rem, 2.1vw, 1.85rem);
+}
+
+.dashboard-muted {
+  margin: 0;
+  color: var(--progress-soft);
+}
+
+.progress-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
+  gap: 20px;
+}
+
+.progress-hero-card {
+  min-height: 340px;
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+  align-content: space-between;
+}
+
+.progress-hero-card--secondary {
+  background: linear-gradient(180deg, rgba(12, 24, 45, 0.94), rgba(8, 17, 33, 0.82));
+}
+
+.progress-hero-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.progress-hero-copy h1 {
+  margin: 0;
+  max-width: 11ch;
+  font-size: clamp(2.6rem, 5vw, 4.8rem);
+  line-height: 0.97;
+  letter-spacing: -0.04em;
+}
+
+.progress-hero-copy p,
+.progress-status-banner p,
+.hero-side-section p,
+.section-note,
+.achievement-copy p,
+.progress-empty-state p,
+.leaderboard-row p,
+.timeline-card p,
+.player-card p {
+  margin: 0;
+  color: var(--progress-soft);
+}
+
+.progress-eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.17em;
+  font-size: 0.72rem;
+  color: var(--progress-accent);
+}
+
+.progress-status-banner {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  border: 1px solid rgba(126, 207, 255, 0.12);
+  background: linear-gradient(160deg, rgba(18, 56, 100, 0.68), rgba(10, 22, 42, 0.82));
+}
+
+.progress-status-banner--with-beacon {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.progress-status-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.progress-status-banner strong {
+  font-size: 1.3rem;
+}
+
+.progress-status-beacon {
+  justify-self: end;
+}
+
+.signal-beacon {
+  width: 112px;
+  aspect-ratio: 1;
+  border-radius: 22px;
+  overflow: hidden;
+  border: 1px solid rgba(170, 220, 255, 0.12);
+  background:
+    radial-gradient(circle at 50% 28%, rgba(111, 202, 255, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(8, 18, 36, 0.94), rgba(10, 21, 40, 0.86));
+}
+
+.signal-beacon canvas {
+  display: block;
+}
+
+.progress-error {
+  color: #ffd2be;
+}
+
+.hero-side-section {
+  display: grid;
+  gap: 12px;
+}
+
+.hero-side-section h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 2.4vw, 2.2rem);
+  line-height: 1.08;
+}
+
+.hero-side-metric-grid,
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.hero-mini-card,
+.timeline-card {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(170, 220, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hero-mini-card strong,
+.timeline-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.16rem;
+  line-height: 1.3;
+}
+
+.timeline-label {
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.72rem;
+  color: var(--progress-soft);
+}
+
+.warning-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 155, 129, 0.26);
+  background: linear-gradient(180deg, rgba(62, 24, 24, 0.88), rgba(33, 14, 22, 0.88));
+}
+
+.warning-card strong {
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.warning-card p {
+  color: rgba(255, 227, 219, 0.84);
+}
+
+.warning-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.stat-card strong {
+  display: block;
+  margin-top: 10px;
+  font-size: clamp(2.1rem, 4vw, 3rem);
+  letter-spacing: -0.04em;
+}
+
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.progress-card {
+  display: grid;
+  gap: 18px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.section-header h2,
+.achievement-copy h3,
+.progress-empty-state h1 {
+  margin: 6px 0 0;
+}
+
+.section-note {
+  text-align: right;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-action {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 18px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6ed8ff 0%, #98ffc5 100%);
+  color: #07111f;
+  font-weight: 700;
+  transition: transform 180ms ease, opacity 180ms ease, box-shadow 180ms ease;
+  box-shadow: 0 10px 24px rgba(69, 197, 255, 0.22);
+}
+
+.progress-action:hover {
+  transform: translateY(-2px);
+}
+
+.progress-action:disabled {
+  opacity: 0.65;
+  cursor: progress;
+  transform: none;
+}
+
+.progress-action.is-secondary {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eff8ff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+.progress-action.is-danger {
+  background: linear-gradient(135deg, #ff9c7d 0%, #ff587d 100%);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(255, 88, 125, 0.22);
+}
+
+.leaderboard-list {
+  display: grid;
+  gap: 12px;
+}
+
+.leaderboard-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  transform-origin: center left;
+  animation: rankShift 320ms ease;
+}
+
+.leaderboard-row strong,
+.leaderboard-row span {
+  display: block;
+}
+
+.leaderboard-row strong {
+  font-size: 1.55rem;
+  line-height: 1;
+}
+
+.leaderboard-row span {
+  text-align: right;
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.leaderboard-row.is-current-user {
+  border: 1px solid rgba(132, 220, 255, 0.28);
+  background: rgba(132, 220, 255, 0.09);
+}
+
+.achievement-section {
+  display: grid;
+  gap: 18px;
+}
+
+.achievement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.player-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.achievement-card {
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.achievement-card.is-highlighted {
+  border-color: rgba(255, 214, 118, 0.5);
+  box-shadow: 0 28px 75px rgba(255, 170, 56, 0.18);
+}
+
+.achievement-visual {
+  min-height: 128px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(11, 27, 49, 0.94), rgba(17, 38, 68, 0.88));
+  display: grid;
+  place-items: center;
+  padding: 10px 8px;
+}
+
+.achievement-copy {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+
+.achievement-emblem {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.achievement-token {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.34), transparent 30%),
+    linear-gradient(145deg, rgba(122, 216, 255, 0.92), rgba(54, 136, 255, 0.9));
+  color: #041322;
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: 0 18px 40px rgba(41, 156, 255, 0.24);
+}
+
+.achievement-emblem.is-highlighted .achievement-token {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.42), transparent 30%),
+    linear-gradient(145deg, rgba(255, 227, 123, 0.95), rgba(255, 162, 58, 0.92));
+  color: #231405;
+  box-shadow: 0 18px 44px rgba(255, 175, 60, 0.3);
+}
+
+.achievement-state {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(170, 220, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--progress-soft);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.achievement-placeholder,
+.progress-empty-state {
+  padding: 24px;
+}
+
+.player-card {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  background: rgba(14, 27, 50, 0.82);
+}
+
+.player-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.player-card-header strong {
+  display: block;
+  font-size: 1.4rem;
+}
+
+.player-card-rank {
+  display: inline-block;
+  margin-top: 6px;
+  color: var(--progress-accent);
+  font-weight: 700;
+}
+
+.player-card-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  color: #d8eefb;
+  font-size: 0.94rem;
+}
+
+.player-remove-button {
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 143, 133, 0.28);
+  background: rgba(255, 143, 133, 0.08);
+  color: #ffd4cf;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.player-remove-button:hover {
+  background: rgba(255, 143, 133, 0.16);
+  transform: translateY(-1px);
+}
+
+.player-remove-button:disabled {
+  opacity: 0.65;
+  cursor: progress;
+  transform: none;
+}
+
+.progress-empty-state {
+  min-height: 100vh;
+  display: grid;
+  gap: 12px;
+  align-content: center;
+  margin: 0;
+}
+
+@keyframes rankShift {
+  0% {
+    opacity: 0.6;
+    transform: translateY(8px) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 1180px) {
+  .dashboard-top,
+  .progress-hero-grid,
+  .progress-grid,
+  .achievement-grid,
+  .player-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .achievement-card {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-hero-copy h1 {
+    max-width: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .stat-grid,
+  .action-grid,
+  .admin-summary-grid,
+  .hero-side-metric-grid,
+  .player-card-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .progress-shell {
+    width: min(100%, calc(100% - 24px));
+    padding-bottom: 28px;
+  }
+
+  .progress-hero-card,
+  .stat-card,
+  .progress-card,
+  .achievement-card,
+  .achievement-placeholder,
+  .progress-empty-state,
+  .player-card {
+    padding: 18px;
+  }
+
+  .stat-grid,
+  .action-grid,
+  .admin-summary-grid,
+  .hero-side-metric-grid,
+  .player-card-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header {
+    flex-direction: column;
+  }
+
+  .progress-status-banner--with-beacon {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-status-beacon {
+    justify-self: start;
+  }
+
+  .section-note {
+    text-align: left;
+  }
+
+  .warning-actions {
+    flex-direction: column;
+  }
+
+  .leaderboard-row strong,
+  .leaderboard-row span {
+    font-size: 1.2rem;
+  }
+}
