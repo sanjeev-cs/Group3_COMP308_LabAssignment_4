@@ -29,6 +29,8 @@ const config = {
       [...defaultOrigins, ...splitOrigins(process.env.FRONTEND_URL, process.env.FRONTEND_URLS)],
     ),
   ],
+  geminiApiKey: process.env.GEMINI_API_KEY ?? '',
+  groqApiKey: process.env.GROQ_API_KEY ?? '',
 };
 
 export default config;

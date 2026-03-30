@@ -28,6 +28,20 @@ const typeDefs = gql`
     login(identifier: String!, password: String!): AuthPayload!
     logout: LogoutPayload!
   }
+
+  type AIResponse {
+    answer: String!
+    category: String! # "tip" | "warning" | "strategy"
+    source: [String!]!
+  }
+
+  type PlayerProgress {
+    userId: ID!
+    level: Int!
+    experiencePoints: Int!
+    score: Int!
+    failCount: Int!
+    achievements: [String!]!  }
 `;
 
 export default typeDefs;

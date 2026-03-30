@@ -39,6 +39,11 @@ const GameProgressSchema = new mongoose.Schema(
       default: 'Not started',
       trim: true,
     },
+    failCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     lastPlayed: {
       type: Date,
       default: Date.now,

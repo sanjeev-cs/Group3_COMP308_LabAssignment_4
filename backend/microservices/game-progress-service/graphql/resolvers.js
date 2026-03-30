@@ -1,9 +1,13 @@
 import GameProgress from '../../shared/models/GameProgress.js';
+import GameHint from '../../shared/models/GameHint.js';
 import User from '../../shared/models/User.js';
 import {
   requireAdministrator,
   requireAuthentication,
 } from '../../shared/auth.js';
+import { askAgent, generateHintForLevel } from '../ai/agentChain.js';
+
+// ─── Leaderboard Utilities ───────────────────────────────────────────────────
 
 const leaderboardSort = {
   score: -1,
@@ -58,6 +62,8 @@ const synchronizeLeaderboardRanks = async () => {
   }
 };
 
+// ─── Progress Helpers ────────────────────────────────────────────────────────
+
 const getPopulatedProgressById = (progressId) =>
   GameProgress.findById(progressId).populate('userId');
 
@@ -83,8 +89,12 @@ const ensureProgressForUser = async (userId) => {
   return progressEntry;
 };
 
+// ─── Resolvers ───────────────────────────────────────────────────────────────
+
 const resolvers = {
   Query: {
+    // ── Existing Queries ──────────────────────────────────────────────────
+
     leaderboard: async (_parent, { limit }) => {
       await synchronizeLeaderboardRanks();
       const playerLeaderboardFilter = await getPlayerLeaderboardFilter();
@@ -102,7 +112,77 @@ const resolvers = {
       await synchronizeLeaderboardRanks();
       return GameProgress.findOne({ userId }).populate('userId');
     },
+
+    // ── AI Game Guide Queries ─────────────────────────────────────────────
+
+    /**
+     * Main AI chatbot query. Accepts a player question, retrieves relevant
+     * game knowledge, and returns a context-aware AI response.
+     */
+    gameAIQuery: async (_parent, { input }, { authUser }) => {
+      requireAuthentication(authUser);
+
+      // Fetch the authenticated player's current progress for context
+      const progress = await GameProgress.findOne({ userId: authUser.id });
+      const playerStats = {
+        level: progress?.level ?? 1,
+        experiencePoints: progress?.experiencePoints ?? 0,
+        score: progress?.score ?? 0,
+        failCount: progress?.failCount ?? 0,
+      };
+
+      const result = await askAgent(input, playerStats);
+      return result;
+    },
+
+    /**
+     * Fetches a player's progress summary for display in the chatbot header.
+     */
+    playerProgress: async (_parent, { userId }) => {
+      const progress = await GameProgress.findOne({ userId }).populate('userId');
+
+      if (!progress) {
+        throw new Error('No progress found for this user.');
+      }
+
+      return {
+        userId: progress.userId?._id?.toString() ?? userId,
+        username: progress.userId?.username ?? 'Unknown',
+        level: progress.level,
+        experiencePoints: progress.experiencePoints,
+        score: progress.score,
+        failCount: progress.failCount ?? 0,
+        achievements: progress.achievements,
+      };
+    },
+
+    /**
+     * Returns an AI-generated hint for a specific game level.
+     * Checks MongoDB for a cached hint first; generates and stores a new one if needed.
+     */
+    gameHint: async (_parent, { level }) => {
+      // Check for a cached hint in MongoDB
+      const cached = await GameHint.findOne({ level }).sort({ generatedAt: -1 });
+
+      if (cached) {
+        return cached.hint;
+      }
+
+      // Generate a new hint via the RAG pipeline
+      const result = await generateHintForLevel(level);
+
+      // Persist in MongoDB for future requests
+      await GameHint.create({
+        level,
+        hint: result.hint,
+        category: result.category,
+        generatedAt: new Date(),
+      });
+
+      return result.hint;
+    },
   },
+
   Mutation: {
     initializeMyProgress: async (_parent, _args, { authUser }) => {
       requireAuthentication(authUser);
@@ -148,6 +228,7 @@ const resolvers = {
       progressEntry.experiencePoints = 0;
       progressEntry.score = 0;
       progressEntry.rank = null;
+      progressEntry.failCount = 0;
       progressEntry.achievements = [];
       progressEntry.progress = 'Not started';
       progressEntry.lastPlayed = new Date();
@@ -180,13 +261,31 @@ const resolvers = {
         removedUsername: player.username,
       };
     },
+
+    /**
+     * Records a level failure. Increments the failCount so the AI agent
+     * can detect repeated failures and proactively suggest easier strategies.
+     */
+    recordFailure: async (_parent, _args, { authUser }) => {
+      requireAuthentication(authUser);
+
+      const progressEntry = await ensureProgressForUser(authUser.id);
+      progressEntry.failCount = (progressEntry.failCount ?? 0) + 1;
+      progressEntry.lastPlayed = new Date();
+
+      await progressEntry.save();
+
+      return getPopulatedProgressById(progressEntry._id);
+    },
   },
+
   GameProgress: {
     id: (progressEntry) => progressEntry._id.toString(),
     userId: (progressEntry) =>
       progressEntry.userId?._id?.toString?.() ?? progressEntry.userId.toString(),
     user: async (progressEntry) =>
       progressEntry.userId?._id ? progressEntry.userId : User.findById(progressEntry.userId),
+    failCount: (progressEntry) => progressEntry.failCount ?? 0,
     lastPlayed: (progressEntry) => progressEntry.lastPlayed.toISOString(),
     updatedAt: (progressEntry) => progressEntry.updatedAt.toISOString(),
   },

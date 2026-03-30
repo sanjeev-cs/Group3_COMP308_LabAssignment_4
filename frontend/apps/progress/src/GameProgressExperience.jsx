@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import AchievementBadge from './components/AchievementBadge.jsx';
 import SignalBeacon from './components/SignalBeacon.jsx';
 import SpaceBackdrop from './components/SpaceBackdrop.jsx';
+import GameChatbot from './components/GameChatbot.jsx';
 import {
   SESSION_EVENT_NAME,
   getCurrentSession,
@@ -120,7 +121,6 @@ const GameProgressExperience = ({ token, user, mode }) => {
   const [errorMessage, setErrorMessage] = useState('');
   const [highlightedAchievement, setHighlightedAchievement] = useState('');
   const [pendingRemoval, setPendingRemoval] = useState(null);
-
   useEffect(() => {
     const handleSessionUpdate = () => {
       setSessionSnapshot(getCurrentSession());
@@ -542,6 +542,13 @@ const GameProgressExperience = ({ token, user, mode }) => {
           </article>
         </section>
       </div>
+
+      {/* Floating AI chatbot — fixed bottom-right, outside page flow */}
+      {panelMode !== 'admin' && (
+        <GameChatbot
+          userId={activeUser?.id}
+        />
+      )}
     </div>
   );
 };

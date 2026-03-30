@@ -1,0 +1,44 @@
+Level 1: Focus on collecting coins in the first area to build up XP quickly. Avoid engaging enemies until you have at least basic armor equipped.
+Level 1: The training grounds are the safest place to learn combat basics. Practice dodging before moving to the open field.
+Level 1: Talk to the village elder before leaving town. He gives you a free health potion and a basic shield.
+Level 2: The forest guardian is weak to fire attacks. Use the torch item found in the cave entrance before the boss fight.
+Level 2: Watch for hidden paths behind waterfalls in the forest. They contain rare loot and bonus XP.
+Level 2: Upgrade your stamina stat before entering the deep forest. Enemies here require sustained dodging.
+Level 3: Upgrade your speed stat before entering the swamp. The swamp enemies are slow but deal heavy damage if they catch you.
+Level 3: Poisonous plants in the swamp can be harvested for antidotes. Collect at least three before fighting the Swamp King.
+Level 3: The quicksand areas can be crossed by jumping on lily pads in the correct sequence: left, right, center, right.
+Level 4: In the crystal caves, watch for falling stalactites. Use the dash ability to avoid them. The crystal sword is hidden behind the waterfall.
+Level 4: Mining crystals in the cave gives you materials to craft powerful armor at the blacksmith in the next town.
+Level 4: The cave has two paths. The left path leads to the crystal sword while the right path leads to the exit. Take left first.
+Level 5: The enemy commander attacks in a three-hit combo. Dodge the second attack to create an opening. Upgrade your armor for better defense.
+Level 5: Before the boss fight, stock up on healing potions from the merchant near the checkpoint. You will need at least five.
+Level 5: The commander has a shield phase. Use charged attacks to break through it. Regular attacks will bounce off.
+Level 6: Save your special ability for the mini-boss at the end of the bridge. Regular attacks will not break through his shield.
+Level 6: The bridge level has wind gusts that push you. Time your jumps between gusts for safe crossing.
+Level 6: Recruit the archer NPC near the bridge entrance. She provides ranged support during the mini-boss fight.
+Level 7: The maze level has a shortcut through the left corridor. Collect all three keys before attempting the final door.
+Level 7: Wall torches that flicker indicate secret passages. Press the interact button near them to reveal hidden rooms.
+Level 7: The maze changes layout after midnight in-game time. Complete it during daytime for the easier configuration.
+Level 8: Ice abilities freeze the lava monsters for 5 seconds. Combine fire and ice for maximum damage to the dragon boss.
+Level 8: The dragon boss has three weak spots: under the wings, the tail tip, and the chest gem. Attack the chest gem for critical damage.
+Level 8: Lava platforms sink after 3 seconds. Keep moving and plan your path before jumping.
+Level 9: The sky citadel requires flight upgrades. Complete the side quest in the village below to unlock the wing artifact.
+Level 9: Wind currents in the sky citadel can be used to reach hidden platforms with treasure chests.
+Level 9: The sky citadel guardian uses lightning attacks. Equip the rubber boots found in Level 8 to reduce damage.
+Level 10: The final boss has three phases. In phase 2, focus on destroying the crystals around the arena before attacking the boss directly.
+Level 10: In the final phase, the boss summons minions. Ignore them and focus damage on the boss during the brief vulnerability windows.
+Level 10: The ultimate weapon is forged by combining the crystal sword from Level 4 with the fire gem from Level 8. Visit the secret forge.
+General: Always check your inventory before entering a new level. Sell unused items for gold at any merchant.
+General: Talk to NPCs in every town. They often give hints about hidden items and secret passages.
+General: If you die more than twice on a level, try grinding XP in the previous area first. Over-leveling makes tough stages easier.
+General: Save your game at every checkpoint crystal. They also restore full health and mana.
+General: Combining elemental abilities creates stronger attacks. Experiment with different combinations.
+Warning: Do NOT enter the shadow realm without the light amulet. It is an instant game over.
+Warning: The merchant in Level 6 sells a cursed item called the Black Ring. Avoid buying it as it reduces your max health permanently.
+Warning: Avoid fighting the optional red dragon before Level 8. It is designed for end-game players and will one-shot early characters.
+Warning: Do not sell the old compass from Level 1. It is needed to unlock a secret area in Level 9.
+Strategy: For boss fights, always stock up on health potions. Bring at least 5 for bosses after Level 5.
+Strategy: If stuck on a level, try changing your character build. The mage class is easier for levels 4-7 while the warrior class excels in levels 8-10.
+Strategy: Farming the crystal cave in Level 4 is the most efficient way to earn gold. Each run takes about 3 minutes and yields 500 gold.
+Strategy: Co-op mode makes boss fights easier. If playing solo, use summon scrolls to call NPC allies.
+Strategy: Invest in the dodge skill tree early. Avoiding damage is more effective than stacking health.
