@@ -35,6 +35,9 @@ const typeDefs = gql`
     answer: String!
     category: String!
     sources: [String!]!
+    provider: String!
+    model: String!
+    notice: String
   }
 
   type PlayerProgressInfo {
@@ -57,6 +60,11 @@ const typeDefs = gql`
     achievement: String
   }
 
+  input MessageInput {
+    role: String!
+    text: String!
+  }
+
   # ─── Queries ─────────────────────────────────────────────────────────────────
 
   type Query {
@@ -65,9 +73,14 @@ const typeDefs = gql`
     progressByUser(userId: ID!): GameProgress
 
     # AI Game Guide Agent queries
-    gameAIQuery(input: String!): AIResponse!
+    gameAIQuery(
+      input: String!
+      history: [MessageInput!]
+      provider: String
+      model: String
+    ): AIResponse!
     playerProgress(userId: ID!): PlayerProgressInfo!
-    gameHint(level: Int!): String!
+    gameHint(level: Int!, provider: String, model: String): String!
   }
 
   # ─── Mutations ───────────────────────────────────────────────────────────────

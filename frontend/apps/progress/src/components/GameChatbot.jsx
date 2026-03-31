@@ -1,16 +1,25 @@
 import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import progressClient from '../progressClient.js';
-import { useState, useRef, useEffect, useCallback } from 'react';
-
-// GraphQL Operations
 
 const GAME_AI_QUERY = gql`
-  query GameAIQuery($input: String!) {
-    gameAIQuery(input: $input) {
+  query GameAIQuery(
+    $input: String!
+    $history: [MessageInput!]
+    $provider: String
+    $model: String
+  ) {
+    gameAIQuery(
+      input: $input
+      history: $history
+      provider: $provider
+      model: $model
+    ) {
       answer
       category
-      sources
+      notice
     }
   }
 `;
@@ -24,12 +33,28 @@ const PLAYER_PROGRESS_QUERY = gql`
       experiencePoints
       score
       failCount
-      achievements
     }
   }
 `;
 
-// Constants
+const GAME_HINT_QUERY = gql`
+  query GameHint($level: Int!, $provider: String, $model: String) {
+    gameHint(level: $level, provider: $provider, model: $model)
+  }
+`;
+
+const RECORD_FAILURE_MUTATION = gql`
+  mutation RecordFailure {
+    recordFailure {
+      id
+      level
+      failCount
+    }
+  }
+`;
+
+const FIXED_PROVIDER = 'groq';
+const FIXED_MODEL = 'llama-3.3-70b-versatile';
 
 const CATEGORY_COLORS = {
   tip: '#4ade80',
@@ -38,99 +63,224 @@ const CATEGORY_COLORS = {
 };
 
 const CATEGORY_LABELS = {
-  tip: '💡 Tip',
-  warning: '⚠️ Warning',
-  strategy: '🎯 Strategy',
+  tip: 'Tip',
+  warning: 'Warning',
+  strategy: 'Strategy',
 };
 
 const SUGGESTED_QUESTIONS = [
   'How do I pass my current level?',
-  'What items should I collect?',
-  'Any tips for the boss fight?',
-  'Best strategy for leveling up?',
+  'What items should I collect next?',
+  'Give me a boss fight strategy.',
+  'How should I level up faster?',
 ];
 
-// Component
+const classifyHintCategory = (text = '') => {
+  const lower = text.toLowerCase();
+
+  if (
+    ['warning', 'danger', 'do not', 'avoid', 'careful', 'cursed'].some((term) =>
+      lower.includes(term),
+    )
+  ) {
+    return 'warning';
+  }
+
+  if (
+    ['strategy', 'alternative', 'easier', 'build', 'approach', 'farming'].some((term) =>
+      lower.includes(term),
+    )
+  ) {
+    return 'strategy';
+  }
+
+  return 'tip';
+};
+
+const extractErrorMessage = (error) =>
+  error?.graphQLErrors?.[0]?.message ?? error?.message ?? 'The request failed.';
+
+const GuideGlyph = ({ className }) => (
+  <svg
+    aria-hidden="true"
+    className={className}
+    fill="none"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M9 4.5V7.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+    <path d="M15 4.5V7.2" stroke="currentColor" strokeLinecap="round" strokeWidth="1.5" />
+    <circle cx="9" cy="3.75" fill="currentColor" r="1.35" />
+    <circle cx="15" cy="3.75" fill="currentColor" r="1.35" />
+    <rect fill="currentColor" height="10.5" rx="3.2" width="13" x="5.5" y="7.2" />
+    <rect fill="#314761" height="6.6" rx="2.1" width="9.2" x="7.4" y="9.25" />
+    <circle cx="10.3" cy="12.2" fill="currentColor" r="1" />
+    <circle cx="13.7" cy="12.2" fill="currentColor" r="1" />
+    <path
+      d="M10 14.4C10.6 15.05 11.35 15.4 12 15.4C12.65 15.4 13.4 15.05 14 14.4"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.15"
+    />
+    <rect fill="currentColor" height="4.2" rx="1.05" width="2.1" x="3.6" y="10.35" />
+    <rect fill="currentColor" height="4.2" rx="1.05" width="2.1" x="18.3" y="10.35" />
+    <rect fill="currentColor" height="2" rx="0.8" width="2.8" x="10.6" y="17.7" />
+    <rect fill="currentColor" height="1.9" rx="0.95" width="7.8" x="8.1" y="19.7" />
+  </svg>
+);
+
+const CloseGlyph = ({ className }) => (
+  <svg
+    aria-hidden="true"
+    className={className}
+    fill="none"
+    viewBox="0 0 20 20"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M5 5L15 15M15 5L5 15"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeWidth="1.8"
+    />
+  </svg>
+);
 
 const GameChatbot = ({ userId }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState('');
   const [hasUnread, setHasUnread] = useState(false);
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Fetch player progress for the stats header
-  const { data: progressData } = useQuery(PLAYER_PROGRESS_QUERY, {
+  const {
+    data: progressData,
+    refetch: refetchProgress,
+  } = useQuery(PLAYER_PROGRESS_QUERY, {
     variables: { userId },
     skip: !userId,
     fetchPolicy: 'cache-and-network',
   });
 
-  // Auto-scroll to the latest message
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const stats = progressData?.playerProgress;
+  const isBusy = loading || Boolean(actionLoading);
 
-  // Focus input when opened
   useEffect(() => {
-    if (isOpen) {
-      setHasUnread(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
+    chatEndRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'end',
+    });
+  }, [messages, loading]);
+
+  useEffect(() => {
+    if (!isOpen || typeof window === 'undefined') {
+      return undefined;
     }
+
+    setHasUnread(false);
+    const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 60);
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', handleEscape);
+    };
   }, [isOpen]);
 
-  // Direct client.query() — works in all Apollo Client versions
-  const sendQuery = useCallback(
-    async (question) => {
-      setLoading(true);
-      try {
-        const { data } = await progressClient.query({
-          query: GAME_AI_QUERY,
-          variables: { input: question },
-          fetchPolicy: 'no-cache',
-        });
-        const { answer, category, sources } = data.gameAIQuery;
-        setMessages((prev) => [
-          ...prev,
-          { role: 'guide', text: answer, category, sources, timestamp: new Date() },
-        ]);
-        if (!isOpen) setHasUnread(true);
-      } catch (error) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'guide',
-            text: `Sorry, I couldn't process that: ${error.message}`,
-            category: 'warning',
-            sources: [],
-            timestamp: new Date(),
-          },
-        ]);
-      } finally {
-        setLoading(false);
+  const appendPlayerMessage = useCallback((text) => {
+    setMessages((currentMessages) => [
+      ...currentMessages,
+      {
+        role: 'player',
+        text,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  }, []);
+
+  const appendGuideMessage = useCallback(
+    ({ text, category, notice = null }) => {
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          role: 'guide',
+          text,
+          category,
+          notice,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+
+      if (!isOpen) {
+        setHasUnread(true);
       }
     },
     [isOpen],
   );
 
-  const handleSend = useCallback(() => {
-    const trimmed = inputValue.trim();
-    if (!trimmed || loading) return;
+  const sendQuery = useCallback(
+    async (question, currentMessages) => {
+      setLoading(true);
 
-    setMessages((prev) => [
-      ...prev,
-      { role: 'player', text: trimmed, timestamp: new Date() },
-    ]);
+      try {
+        const history = currentMessages.map((message) => ({
+          role: message.role,
+          text: message.text,
+        }));
+
+        const { data } = await progressClient.query({
+          query: GAME_AI_QUERY,
+          variables: {
+            input: question,
+            history,
+            provider: FIXED_PROVIDER,
+            model: FIXED_MODEL,
+          },
+          fetchPolicy: 'no-cache',
+        });
+
+        appendGuideMessage({
+          text: data.gameAIQuery.answer,
+          category: data.gameAIQuery.category,
+          notice: data.gameAIQuery.notice,
+        });
+      } catch (error) {
+        appendGuideMessage({
+          text: `I could not process that request: ${extractErrorMessage(error)}`,
+          category: 'warning',
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appendGuideMessage],
+  );
+
+  const handleSend = useCallback(() => {
+    const trimmedValue = inputValue.trim();
+    if (!trimmedValue || isBusy) {
+      return;
+    }
+
+    appendPlayerMessage(trimmedValue);
     setInputValue('');
-    sendQuery(trimmed);
-  }, [inputValue, loading, sendQuery]);
+    void sendQuery(trimmedValue, messages);
+  }, [appendPlayerMessage, inputValue, isBusy, messages, sendQuery]);
 
   const handleKeyDown = useCallback(
-    (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
+    (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
         handleSend();
       }
     },
@@ -139,151 +289,264 @@ const GameChatbot = ({ userId }) => {
 
   const handleSuggestionClick = useCallback(
     (question) => {
-      if (loading) return;
-      setMessages((prev) => [
-        ...prev,
-        { role: 'player', text: question, timestamp: new Date() },
-      ]);
-      sendQuery(question);
+      if (isBusy) {
+        return;
+      }
+
+      appendPlayerMessage(question);
+      void sendQuery(question, messages);
     },
-    [loading, sendQuery],
+    [appendPlayerMessage, isBusy, messages, sendQuery],
   );
 
-  const stats = progressData?.playerProgress;
+  const handleLevelHint = useCallback(async () => {
+    if (!stats?.level || isBusy) {
+      return;
+    }
 
-  return (
-    <div className="chatbot-floating-wrapper">
-      {/* Floating toggle button */}
-      <button
-        className={`chatbot-fab ${isOpen ? 'chatbot-fab--open' : ''}`}
-        onClick={() => setIsOpen((prev) => !prev)}
-        type="button"
-        aria-label={isOpen ? 'Close Game Guide' : 'Open Game Guide'}
-        id="chatbot-fab"
-      >
-        {isOpen ? '✕' : '🤖'}
-        {hasUnread && !isOpen && <span className="chatbot-fab-badge" />}
-      </button>
+    const prompt = `Give me a quick hint for Level ${stats.level}.`;
+    appendPlayerMessage(prompt);
+    setActionLoading('hint');
 
-      {/* Floating chat window */}
-      {isOpen && (
-        <div className="chatbot-window">
-          {/* Header */}
-          <div className="chatbot-header">
-            <div className="chatbot-header-left">
-              <div className="chatbot-avatar">🤖</div>
-              <div>
-                <span className="chatbot-eyebrow">AI GAME GUIDE</span>
-                <h3 className="chatbot-title">Game Assistant</h3>
+    try {
+      const { data } = await progressClient.query({
+        query: GAME_HINT_QUERY,
+        variables: {
+          level: stats.level,
+          provider: FIXED_PROVIDER,
+          model: FIXED_MODEL,
+        },
+        fetchPolicy: 'no-cache',
+      });
+
+      appendGuideMessage({
+        text: data.gameHint,
+        category: classifyHintCategory(data.gameHint),
+      });
+    } catch (error) {
+      appendGuideMessage({
+        text: `I could not fetch the level hint: ${extractErrorMessage(error)}`,
+        category: 'warning',
+      });
+    } finally {
+      setActionLoading('');
+    }
+  }, [appendGuideMessage, appendPlayerMessage, isBusy, stats?.level]);
+
+  const handleRecordFailure = useCallback(async () => {
+    if (!userId || isBusy) {
+      return;
+    }
+
+    setActionLoading('failure');
+
+    try {
+      const { data } = await progressClient.mutate({
+        mutation: RECORD_FAILURE_MUTATION,
+      });
+
+      await refetchProgress();
+
+      const updatedProgress = data?.recordFailure;
+      const updatedFailCount = updatedProgress?.failCount ?? 0;
+      const updatedLevel = updatedProgress?.level ?? stats?.level ?? 1;
+
+      if (updatedFailCount >= 2) {
+        const recoveryPrompt = `I just failed Level ${updatedLevel} again. Give me an easier fallback strategy that matches my current stats.`;
+        appendPlayerMessage(recoveryPrompt);
+        await sendQuery(recoveryPrompt, messages);
+      } else {
+        appendGuideMessage({
+          text: `Failed attempt recorded. I will factor that into future advice for Level ${updatedLevel}.`,
+          category: 'tip',
+        });
+      }
+    } catch (error) {
+      appendGuideMessage({
+        text: `I could not record that failed attempt: ${extractErrorMessage(error)}`,
+        category: 'warning',
+      });
+    } finally {
+      setActionLoading('');
+    }
+  }, [
+    appendGuideMessage,
+    appendPlayerMessage,
+    isBusy,
+    messages,
+    refetchProgress,
+    sendQuery,
+    stats?.level,
+    userId,
+  ]);
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const subtitle = stats
+    ? `Lvl ${stats.level} · XP ${stats.experiencePoints} · Fails ${stats.failCount}`
+    : 'Groq · Llama 3.3 70B';
+
+  return createPortal(
+    <div className="chatbot-root">
+      {!isOpen ? (
+        <button
+          aria-label="Open Game Guide"
+          className="chatbot-trigger"
+          onClick={() => setIsOpen(true)}
+          type="button"
+        >
+          <GuideGlyph className="chatbot-trigger-icon" />
+          {hasUnread ? <span className="chatbot-trigger-badge" /> : null}
+        </button>
+      ) : null}
+
+      {isOpen ? (
+        <section
+          aria-label="Game Guide"
+          aria-modal="false"
+          className="chatbot-panel"
+          role="dialog"
+        >
+          <header className="chatbot-panel-header">
+            <div className="chatbot-panel-brand">
+              <span className="chatbot-panel-icon">
+                <GuideGlyph className="chatbot-panel-icon-svg" />
+              </span>
+
+              <div className="chatbot-panel-copy">
+                <p className="chatbot-panel-kicker">Game Guide</p>
+                <h2 className="chatbot-panel-title">Need a route or boss plan?</h2>
+                <p className="chatbot-panel-subtitle">{subtitle}</p>
               </div>
             </div>
-            {stats && (
-              <div className="chatbot-stats">
-                <span className="chatbot-stat chatbot-stat--level">
-                  <span className="chatbot-stat-label">LVL</span>
-                  <span className="chatbot-stat-value">{stats.level}</span>
-                </span>
-                <span className="chatbot-stat chatbot-stat--xp">
-                  <span className="chatbot-stat-label">XP</span>
-                  <span className="chatbot-stat-value">{stats.experiencePoints}</span>
-                </span>
-                <span className="chatbot-stat chatbot-stat--score">
-                  <span className="chatbot-stat-label">SCR</span>
-                  <span className="chatbot-stat-value">{stats.score}</span>
-                </span>
-              </div>
-            )}
+
+            <button
+              aria-label="Close Game Guide"
+              className="chatbot-panel-close"
+              onClick={() => setIsOpen(false)}
+              type="button"
+            >
+              <CloseGlyph className="chatbot-panel-close-icon" />
+            </button>
+          </header>
+
+          <div className="chatbot-panel-actions">
+            <button
+              className="chatbot-panel-action"
+              disabled={!stats?.level || isBusy}
+              onClick={handleLevelHint}
+              type="button"
+            >
+              {actionLoading === 'hint' ? 'Loading hint...' : `Hint for Level ${stats?.level ?? '-'}`}
+            </button>
+
+            <button
+              className="chatbot-panel-action chatbot-panel-action--secondary"
+              disabled={!userId || isBusy}
+              onClick={handleRecordFailure}
+              type="button"
+            >
+              {actionLoading === 'failure'
+                ? 'Recording...'
+                : `Record failure${stats?.failCount ? ` (${stats.failCount})` : ''}`}
+            </button>
           </div>
 
-          {/* Messages */}
-          <div className="chatbot-messages">
-            {messages.length === 0 && (
-              <div className="chatbot-empty">
-                <div className="chatbot-empty-icon">🎮</div>
-                <p className="chatbot-empty-title">Need help?</p>
-                <p className="chatbot-empty-subtitle">Ask me anything or try:</p>
-                <div className="chatbot-suggestions">
-                  {SUGGESTED_QUESTIONS.map((q) => (
+          <div className="chatbot-panel-messages">
+            {messages.length === 0 ? (
+              <div className="chatbot-panel-empty">
+                <p className="chatbot-panel-empty-title">
+                  Ask for a route, boss tactic, or easier fallback strategy.
+                </p>
+                <div className="chatbot-panel-suggestions">
+                  {SUGGESTED_QUESTIONS.map((question) => (
                     <button
-                      key={q}
-                      className="chatbot-suggestion"
-                      onClick={() => handleSuggestionClick(q)}
+                      className="chatbot-panel-suggestion"
+                      key={question}
+                      onClick={() => handleSuggestionClick(question)}
                       type="button"
                     >
-                      {q}
+                      {question}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
-            {messages.map((msg, i) => (
+            {messages.map((message, index) => (
               <div
-                key={i}
-                className={`chat-bubble chat-bubble--${msg.role}`}
+                className={`chat-bubble chat-bubble--${message.role}`}
+                key={`${message.timestamp}-${index}`}
                 style={
-                  msg.category
-                    ? { '--bubble-accent': CATEGORY_COLORS[msg.category] || '#8edcff' }
+                  message.category
+                    ? {
+                        '--bubble-accent': CATEGORY_COLORS[message.category] ?? '#8edcff',
+                      }
                     : undefined
                 }
               >
                 <div className="chat-bubble-header">
-                  <strong>{msg.role === 'player' ? 'You' : '🤖 Guide'}</strong>
-                  {msg.category && (
-                    <span className={`chat-category-badge chat-category-badge--${msg.category}`}>
-                      {CATEGORY_LABELS[msg.category] || msg.category}
+                  <strong>{message.role === 'player' ? 'You' : 'Guide'}</strong>
+                  {message.category ? (
+                    <span
+                      className={`chat-category-badge chat-category-badge--${message.category}`}
+                    >
+                      {CATEGORY_LABELS[message.category] ?? message.category}
                     </span>
-                  )}
+                  ) : null}
                 </div>
-                <p>{msg.text}</p>
+
+                <p>{message.text}</p>
+
+                {message.role === 'guide' && message.notice ? (
+                  <p className="chat-bubble-notice">{message.notice}</p>
+                ) : null}
               </div>
             ))}
 
-            {loading && (
+            {loading ? (
               <div className="chat-bubble chat-bubble--guide chat-bubble--loading">
                 <div className="chat-bubble-header">
-                  <strong>🤖 Guide</strong>
+                  <strong>Guide</strong>
                 </div>
+
                 <div className="chatbot-typing-indicator">
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span />
+                  <span />
+                  <span />
                 </div>
               </div>
-            )}
+            ) : null}
 
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input */}
-          <div className="chatbot-input-row">
+          <div className="chatbot-panel-input">
             <input
+              disabled={isBusy}
+              onChange={(event) => setInputValue(event.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about the current level, route, or boss..."
               ref={inputRef}
               type="text"
-              placeholder="Ask the Game Guide..."
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={loading}
-              id="chatbot-input"
             />
+
             <button
-              className="chatbot-send-button"
+              className="chatbot-panel-send"
+              disabled={isBusy || !inputValue.trim()}
               onClick={handleSend}
-              disabled={loading || !inputValue.trim()}
               type="button"
-              id="chatbot-send"
             >
-              {loading ? (
-                <span className="chatbot-send-spinner" />
-              ) : (
-                <span className="chatbot-send-arrow">➤</span>
-              )}
+              {loading ? <span className="chatbot-send-spinner" /> : <span>{'>'}</span>}
             </button>
           </div>
-        </div>
-      )}
-    </div>
+        </section>
+      ) : null}
+    </div>,
+    document.body,
   );
 };
 

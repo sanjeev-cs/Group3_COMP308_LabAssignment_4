@@ -15,6 +15,16 @@ const GameHintSchema = new mongoose.Schema(
       enum: ['tip', 'warning', 'strategy'],
       default: 'tip',
     },
+    provider: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    model: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     generatedAt: {
       type: Date,
       default: Date.now,
@@ -23,7 +33,7 @@ const GameHintSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-GameHintSchema.index({ level: 1 });
+GameHintSchema.index({ level: 1, provider: 1, model: 1 });
 
 GameHintSchema.set('toJSON', {
   transform: (_document, returnedObject) => {

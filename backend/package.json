@@ -22,6 +22,7 @@
     "@langchain/community": "^1.1.25",
     "@langchain/core": "^1.1.36",
     "@langchain/google-genai": "^2.1.26",
+    "@langchain/groq": "*",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",

@@ -5,7 +5,11 @@ import {
   requireAdministrator,
   requireAuthentication,
 } from '../../shared/auth.js';
-import { askAgent, generateHintForLevel } from '../ai/agentChain.js';
+import {
+  askAgent,
+  generateHintForLevel,
+  resolveAgentSelection,
+} from '../ai/agentChain.js';
 
 // ─── Leaderboard Utilities ───────────────────────────────────────────────────
 
@@ -119,7 +123,7 @@ const resolvers = {
      * Main AI chatbot query. Accepts a player question, retrieves relevant
      * game knowledge, and returns a context-aware AI response.
      */
-    gameAIQuery: async (_parent, { input }, { authUser }) => {
+    gameAIQuery: async (_parent, { input, history, provider, model }, { authUser }) => {
       requireAuthentication(authUser);
 
       // Fetch the authenticated player's current progress for context
@@ -131,7 +135,10 @@ const resolvers = {
         failCount: progress?.failCount ?? 0,
       };
 
-      const result = await askAgent(input, playerStats);
+      const result = await askAgent(input, playerStats, history, {
+        provider,
+        model,
+      });
       return result;
     },
 
@@ -160,22 +167,31 @@ const resolvers = {
      * Returns an AI-generated hint for a specific game level.
      * Checks MongoDB for a cached hint first; generates and stores a new one if needed.
      */
-    gameHint: async (_parent, { level }) => {
-      // Check for a cached hint in MongoDB
-      const cached = await GameHint.findOne({ level }).sort({ generatedAt: -1 });
+    gameHint: async (_parent, { level, provider, model }) => {
+      const selection = resolveAgentSelection({ provider, model });
+
+      if (selection.error) {
+        throw new Error(selection.error);
+      }
+
+      const cached = await GameHint.findOne({
+        level,
+        provider: selection.provider,
+        model: selection.model,
+      }).sort({ generatedAt: -1 });
 
       if (cached) {
         return cached.hint;
       }
 
-      // Generate a new hint via the RAG pipeline
-      const result = await generateHintForLevel(level);
+      const result = await generateHintForLevel(level, selection);
 
-      // Persist in MongoDB for future requests
       await GameHint.create({
         level,
         hint: result.hint,
         category: result.category,
+        provider: result.provider,
+        model: result.model,
         generatedAt: new Date(),
       });
 
